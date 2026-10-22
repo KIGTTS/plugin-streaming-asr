@@ -1,12 +1,18 @@
 {
   "id": "engine.streaming-asr",
   "name": "流式语音识别",
-  "version": "0.8.0",
-  "versionCode": 8,
+  "version": "0.8.1",
+  "versionCode": 9,
   "entryClass": "com.kigtts.engines.streaming.StreamingAsrPlugin",
   "apiVersion": 9,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "MIT",
-  "capabilities": ["asr-batch", "asr-incremental", "ui", "network", "resources"]
+  "capabilities": [
+    "asr-batch",
+    "asr-incremental",
+    "ui",
+    "network",
+    "resources"
+  ]
 }

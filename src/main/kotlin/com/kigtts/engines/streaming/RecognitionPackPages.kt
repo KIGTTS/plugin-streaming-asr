@@ -9,8 +9,8 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
             val all = store.list(); val selected = store.selected()?.id
             val visible = all.filter { store.filter == "all" || store.filter in it.languages }
             PluginPage(id, "流式识别包", listOf(
-                PageBlock.Notice(if (selected == null) "请导入一个在线识别包" else "当前：${store.selected()!!.name}"),
-                PageBlock.Text("识别边输入边解码，实时返回中间文字；句尾输出最终结果。多语言包在包内识别支持的语言，切换其它语言需选用相应包。"),
+                PageBlock.Notice(if (selected == null) "请添加识别包" else "当前：${store.selected()!!.name}"),
+                PageBlock.Text("边说边显示字幕。需要识别其它语言时，请选择支持该语言的识别包。"),
                 PageBlock.Actions(listOf(PageAction("import", "导入识别包", PluginIcon.ADD),
                     PageAction("download", "下载识别包", PluginIcon.ADD), PageAction("settings", "识别设置", PluginIcon.SETTINGS)))
             ), management = ManagementList("recognition-packs", visible.map { pack ->
@@ -37,7 +37,7 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
             ))
         }
         id == "settings" -> PluginPage(id, "流式识别设置", listOf(PageBlock.Text("推理线程：${store.threads}"),
-            PageBlock.Text("端点使用在线模型的静音判断，识别过程中持续输出真实中间结果。修改或切换包前请停止识别。语言说明用于管理和筛选，不会改变模型自身支持的语言。"),
+            PageBlock.Text("修改或切换识别包前，请先停止识别。编辑语言说明只影响列表筛选，识别语言取决于所用的识别包。"),
             PageBlock.Actions(listOf(PageAction("threads", "推理线程", PluginIcon.SETTINGS), PageAction("packs", "识别包管理", PluginIcon.MIC)))))
         else -> null
     }

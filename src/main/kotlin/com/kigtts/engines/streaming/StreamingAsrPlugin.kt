@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 class StreamingAsrPlugin : KigPlugin {
     override val descriptor = PluginDescriptor("engine.streaming-asr", "流式语音识别",
-        "在线增量解码、多语言识别包管理", version = "0.8.0")
+        "边说边显示字幕，支持多种语言的识别包", version = "0.8.1")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: RecognitionPackStore
     private lateinit var pages: RecognitionPackPages
@@ -38,7 +38,7 @@ class StreamingAsrPlugin : KigPlugin {
             "reorder" -> { store.reorder(PluginJson.decodeFromString(requireNotNull(context.inputs["order"]))); PluginOutcome.RefreshUi }
             "use" -> { store.choose(id); PluginOutcome.RefreshUi }
             "pin" -> { store.edit(id) { it.copy(pinned = !it.pinned) }; PluginOutcome.RefreshUi }
-            "import" -> PluginOutcome.ImportResource("导入在线识别包（ZIP / tar.bz2 / tar.gz / .kigasr）", "resources/inbox", "imported")
+            "import" -> PluginOutcome.ImportResource("导入识别包（ZIP / tar.bz2 / tar.gz / .kigasr）", "resources/inbox", "imported")
             "imported" -> import(null)
             "update" -> PluginOutcome.ImportResource("更新识别包，保留名称、备注和顺序", "resources/inbox", "updated/$id")
             "updated" -> import(id)
@@ -63,7 +63,7 @@ class StreamingAsrPlugin : KigPlugin {
                 val source = environment.download(model.url, "downloads/${model.archive}.tar.bz2", model.sha256)
                 store.import(source); PluginOutcome.OpenPage("packs")
             }
-            "download-custom" -> PluginOutcome.TextInput("官方在线模型包的 HTTPS 地址（ZIP / tar.bz2 / tar.gz）", "download-url")
+            "download-custom" -> PluginOutcome.TextInput("识别包下载地址（HTTPS）", "download-url")
             "download-url" -> {
                 val uri = URI(value()); require(uri.scheme == "https" && !uri.host.isNullOrBlank()) { "请输入 HTTPS 地址" }
                 atomicText(environment.storage.file("config/download.json"), JSONObject().put("url", uri.toString()).toString())
