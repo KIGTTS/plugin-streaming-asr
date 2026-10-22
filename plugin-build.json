@@ -1,0 +1,6 @@
+{
+  "module": "streaming-asr",
+  "extraAars": [
+    "libs/sherpa-onnx-1.12.38-noort.aar"
+  ]
+}
