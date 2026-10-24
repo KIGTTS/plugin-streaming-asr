@@ -7,7 +7,26 @@ import kotlinx.coroutines.sync.withLock
 
 /** Decode every available online chunk. Partial text always comes from the decoder's current hypothesis. */
 internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
-    private val create: (RecognitionPack, Int, Boolean) -> OnlineSession = ::SherpaOnlineSession) : AsrEngine {
+    private val create: (RecognitionPack, Int, Boolean) -> OnlineSession = ::SherpaOnlineSession) : ControlledAsrEngine {
+    private var managed = false
+    private var cached: OnlineSession? = null
+    private var resourceKey: String? = null
+    override suspend fun control(command: AsrControl): Boolean = withContext(Dispatchers.IO) {
+        packs.session.withLock {
+            when (command.op) {
+                AsrControlOp.PREPARE -> { managed = true; initialize(selected(), true) }
+                AsrControlOp.RELEASE -> { managed = false; release() }
+                AsrControlOp.SET_RESIDENT -> Unit
+            }
+            true
+        }
+    }
+    override suspend fun close() { control(AsrControl(AsrControlOp.RELEASE)) }
+    private fun release() { cached?.close(); cached = null; resourceKey = null }
+    private fun finish(decoder: OnlineSession) {
+        if (!managed) decoder.close()
+        else if (!decoder.reopen()) release()
+    }
     override val info get() = AsrInfo(inputFormat = AudioFormat(packs.selected()?.sampleRate ?: 16_000),
         streaming = StreamingKind.INCREMENTAL, availability = if (packs.selected() != null) EngineAvailability.READY else EngineAvailability.NEEDS_RESOURCES)
     override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig): Flow<RecognitionEvent> = flow {
@@ -45,7 +64,7 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
                     val text = decoder.text(); if (text.isNotBlank()) emit(RecognitionEvent.Final(RecognitionResult(text)))
                     else if (previous.isNotEmpty()) emit(RecognitionEvent.Partial(""))
                 }
-            } finally { decoder.close() }
+            } finally { finish(decoder) }
         }
     }.flowOn(Dispatchers.IO)
     override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult = withContext(Dispatchers.IO) {
@@ -64,11 +83,17 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
                 decoder.finishInput()
                 while (decoder.ready()) { currentCoroutineContext().ensureActive(); decoder.decode() }
                 RecognitionResult(decoder.text())
-            } finally { decoder.close() }
+            } finally { finish(decoder) }
         }
     }
     private fun selected() = packs.selected() ?: throw EngineException(EngineError.NOT_CONFIGURED, "请先导入并选用一个流式识别包")
-    private fun initialize(pack: RecognitionPack, endpoints: Boolean): OnlineSession = try { create(pack, packs.threads, endpoints) }
+    private fun initialize(pack: RecognitionPack, endpoints: Boolean): OnlineSession = try {
+        if (!managed) create(pack, packs.threads, endpoints) else {
+            val key = "${pack.directory.path}:${pack.directory.lastModified()}:${pack.files.entries.sortedBy { it.key }.map { pack.file(it.key).lastModified() }}:${packs.threads}:$endpoints"
+            if (resourceKey != key) { release(); cached = create(pack, packs.threads, endpoints); resourceKey = key }
+            requireNotNull(cached)
+        }
+    }
         catch (error: CancellationException) { throw error }
         catch (error: Exception) { throw EngineException(EngineError.INITIALIZATION, "识别包无法用于在线解码：${error.message}", error) }
         catch (error: LinkageError) { throw EngineException(EngineError.INITIALIZATION, "流式识别运行库加载失败", error) }

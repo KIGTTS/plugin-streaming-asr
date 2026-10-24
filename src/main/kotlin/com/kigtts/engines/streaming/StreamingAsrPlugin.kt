@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 class StreamingAsrPlugin : KigPlugin {
     override val descriptor = PluginDescriptor("engine.streaming-asr", "流式语音识别",
-        "边说边显示字幕，支持多种语言的识别包", version = "0.8.1")
+        "边说边显示字幕，支持多种语言的识别包", version = "0.8.2")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: RecognitionPackStore
     private lateinit var pages: RecognitionPackPages
@@ -21,6 +21,7 @@ class StreamingAsrPlugin : KigPlugin {
     override val contributions = PluginContributions(drawerEntries = listOf(
         DrawerEntry("packs", "流式识别包", "packs", PluginIcon.MIC, settingsPage = true)))
     override fun page(pageId: String, context: PluginContext) = pages.page(pageId)
+    override suspend fun close() { if (::engine.isInitialized) engine.close() }
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome = withContext(Dispatchers.IO) {
         val operation = actionId.substringBefore('/'); val id = actionId.substringAfter('/', "")
         fun pack() = store.list().first { it.id == id }

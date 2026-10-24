@@ -10,6 +10,7 @@ internal interface OnlineSession : AutoCloseable {
     fun text(): String
     fun endpoint(): Boolean
     fun reset()
+    fun reopen(): Boolean = false
     fun finishInput()
 }
 
@@ -28,7 +29,7 @@ internal class SherpaOnlineSession(pack: RecognitionPack, threads: Int, endpoint
             rule1 = EndpointRule(false, 2.4f, 0f), rule2 = EndpointRule(true, 1.4f, 0f),
             rule3 = EndpointRule(false, 0f, 20f)),
         enableEndpoint = endpoints, decodingMethod = "greedy_search"))
-    private val stream = try { recognizer.createStream() } catch (error: Throwable) { recognizer.release(); throw error }
+    private var stream = try { recognizer.createStream() } catch (error: Throwable) { recognizer.release(); throw error }
     private val rate = pack.sampleRate
     override fun accept(samples: FloatArray) = stream.acceptWaveform(samples, rate)
     override fun ready() = recognizer.isReady(stream)
@@ -37,5 +38,8 @@ internal class SherpaOnlineSession(pack: RecognitionPack, threads: Int, endpoint
     override fun endpoint() = recognizer.isEndpoint(stream)
     override fun reset() = recognizer.reset(stream)
     override fun finishInput() = stream.inputFinished()
+    override fun reopen(): Boolean {
+        stream.release(); stream = recognizer.createStream(); return true
+    }
     override fun close() { try { stream.release() } finally { recognizer.release() } }
 }

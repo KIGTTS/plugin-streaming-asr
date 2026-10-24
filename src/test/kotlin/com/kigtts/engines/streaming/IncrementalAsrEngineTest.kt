@@ -104,4 +104,22 @@ class IncrementalAsrEngineTest {
         assertEquals(listOf(RecognitionEvent.Started, RecognitionEvent.Partial("临时"), RecognitionEvent.Partial("")), events)
         assertTrue(closed)
     }
+    @Test fun managedModelIsReusedAcrossRecordingsAndReleaseClosesIt() = runBlocking {
+        var created = 0; var reopened = 0
+        val decoders = mutableListOf<Decoder>()
+        val engine = IncrementalAsrEngine(store) { _, _, _ ->
+            created++
+            val decoder = Decoder().also(decoders::add)
+            object : OnlineSession by decoder {
+                override fun reopen(): Boolean { reopened++; decoder.reset(); return true }
+            }
+        }
+        assertTrue(engine.control(AsrControl(AsrControlOp.PREPARE)))
+        engine.recognizeStream(flowOf(audio())).toList()
+        engine.recognizeStream(flowOf(audio())).toList()
+        assertEquals(1, created); assertEquals(2, reopened); assertFalse(decoders.single().closed)
+        engine.control(AsrControl(AsrControlOp.RELEASE)); assertTrue(decoders.single().closed)
+        engine.control(AsrControl(AsrControlOp.PREPARE)); assertEquals(2, created)
+        engine.close(); assertTrue(decoders.last().closed)
+    }
 }
