@@ -1,8 +1,8 @@
 {
   "id": "engine.streaming-asr",
   "name": "流式语音识别",
-  "version": "0.8.2",
-  "versionCode": 10,
+  "version": "0.8.3",
+  "versionCode": 11,
   "entryClass": "com.kigtts.engines.streaming.StreamingAsrPlugin",
   "apiVersion": 28,
   "minSdk": 26,
@@ -14,5 +14,11 @@
     "ui",
     "network",
     "resources"
-  ]
+  ],
+  "permissionPurposes": {
+    "asr-batch": "使用已导入的模型，在设备上将录音转为文字。",
+    "asr-incremental": "在你说话时持续识别录音，实时更新字幕。",
+    "network": "从你填写的下载地址获取流式识别包。",
+    "resources": "导入和管理流式识别模型及词表。"
+  }
 }
