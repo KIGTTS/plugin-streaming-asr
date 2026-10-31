@@ -16,6 +16,11 @@ class StreamingAsrPluginTest {
     private lateinit var root: File
     @Before fun setup() { root = Files.createTempDirectory("streaming-plugin-test").toFile() }
     @After fun cleanup() { root.deleteRecursively() }
+    @Test fun descriptorMatchesTheSignedPackageVersion() {
+        val spec = org.json.JSONObject(File("plugin-spec.json").readText())
+        assertEquals(spec.getString("id"), StreamingAsrPlugin().descriptor.id)
+        assertEquals(spec.getString("version"), StreamingAsrPlugin().descriptor.version)
+    }
     @Test fun declaredLibraryRoutesImportSelectionFilterReorderAndDeleteConfirmation() = runBlocking<Unit> {
         val storage = PluginStorage(root)
         val plugin = StreamingAsrPlugin()

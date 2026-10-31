@@ -1,8 +1,8 @@
 {
   "id": "engine.streaming-asr",
   "name": "流式语音识别",
-  "version": "0.8.4",
-  "versionCode": 12,
+  "version": "0.8.5",
+  "versionCode": 13,
   "entryClass": "com.kigtts.engines.streaming.StreamingAsrPlugin",
   "apiVersion": 28,
   "minSdk": 26,
