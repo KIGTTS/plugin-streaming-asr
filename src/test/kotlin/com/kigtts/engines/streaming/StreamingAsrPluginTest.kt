@@ -40,6 +40,22 @@ class StreamingAsrPluginTest {
         assertEquals(2, RecognitionPackStore(storage).list().size)
         plugin.execute(confirmation.items.single().id, PluginContext("", "")); assertEquals(1, RecognitionPackStore(storage).list().size)
     }
+    @Test fun allConfigurationRoutesLiveInContentGroupsInsteadOfToolbarActions() = runBlocking<Unit> {
+        val storage = PluginStorage(root); val plugin = StreamingAsrPlugin()
+        plugin.attach(object : PluginEnvironment {
+            override val storage = storage; override val assets = File(root, "assets")
+            override suspend fun download(url: String, relativePath: String, sha256: String?) = error("No download requested")
+        })
+        val import = plugin.execute("import", PluginContext("", "")) as PluginOutcome.ImportResource
+        val file = fixture(storage.directory(import.directory))
+        plugin.execute(import.actionId, PluginContext("", "", inputs = mapOf("resourcePath" to file.relativeTo(root).invariantSeparatorsPath)))
+        val pack = plugin.page("packs", PluginContext("", ""))!!.management!!.items.single()
+        for (id in listOf("packs", "settings", "catalog", "pack/${pack.id}")) {
+            val page = requireNotNull(plugin.page(id, PluginContext("", "")))
+            assertFalse("$id must not collect settings in toolbar", page.blocks.any { it is PageBlock.Actions })
+            assertTrue("$id needs settings in its content", page.blocks.any { it is PageBlock.Group })
+        }
+    }
     @Test fun catalogDownloadsAreScopedAndCheckedAndIncludeBilingualModel() = runBlocking<Unit> {
         val storage = PluginStorage(root); val model = RecognitionModelCatalog.models.first { it.languages == listOf("zh", "en") }
         val plugin = StreamingAsrPlugin(); var requested = false

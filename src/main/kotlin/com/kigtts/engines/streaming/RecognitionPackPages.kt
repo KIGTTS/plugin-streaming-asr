@@ -10,9 +10,11 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
             val visible = all.filter { store.filter == "all" || store.filter in it.languages }
             PluginPage(id, "流式识别包", listOf(
                 PageBlock.Notice(if (selected == null) "请添加识别包" else "当前：${store.selected()!!.name}"),
-                PageBlock.Text("边说边显示字幕。需要识别其它语言时，请选择支持该语言的识别包。"),
-                PageBlock.Actions(listOf(PageAction("import", "导入识别包", PluginIcon.ADD),
-                    PageAction("download", "下载识别包", PluginIcon.ADD), PageAction("settings", "识别设置", PluginIcon.SETTINGS)))
+                PageBlock.Group("识别包", listOf(
+                    PageBlock.Input("导入识别包", "从文件添加", "import", icon = PluginIcon.ADD, symbol = "file_open"),
+                    PageBlock.Input("获取识别包", "选择需要的语言", "download", icon = PluginIcon.ADD))),
+                PageBlock.Group("识别设置", listOf(
+                    PageBlock.Input("推理设置", "线程与识别选项", "settings", icon = PluginIcon.SETTINGS)))
             ), management = ManagementList("recognition-packs", visible.map { pack ->
                 ManagementItem(pack.id, pack.name, pack.languages.joinToString(" / ") + " · " + pack.architecture.label() +
                     if (pack.remark.isBlank()) "" else "\n${pack.remark}", PluginIcon.MIC,
@@ -29,16 +31,22 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
             PluginPage(id, pack.name, listOf(PageBlock.Text(pack.name, heading = true),
                 PageBlock.Notice(if (store.selected()?.id == key) "正在使用" else "未选用"),
                 PageBlock.Text("语言：${pack.languages.joinToString(" / ")}\n${pack.architecture.label()} · ${pack.sampleRate} Hz\n${pack.remark}"),
-                PageBlock.Actions(listOf(PageAction("use/$key", "选用识别包", PluginIcon.MIC),
-                    PageAction("name/$key", "修改名称", PluginIcon.EDIT), PageAction("remark/$key", "修改备注", PluginIcon.EDIT),
-                    PageAction("languages/$key", "包的语言说明", PluginIcon.EDIT),
-                    PageAction("update/$key", "更新识别包", PluginIcon.ADD), PageAction("export/$key", "导出", PluginIcon.EXPORT),
-                    PageAction("delete/$key", "删除", PluginIcon.CLOSE)))
+                PageBlock.Group("识别包设置", listOf(
+                    PageBlock.Input("选用识别包", "", "use/$key", icon = PluginIcon.MIC),
+                    PageBlock.Input("名称", pack.name, "name/$key", icon = PluginIcon.EDIT),
+                    PageBlock.Input("备注", pack.remark, "remark/$key", icon = PluginIcon.EDIT),
+                    PageBlock.Input("语言说明", pack.languages.joinToString(" / "), "languages/$key", icon = PluginIcon.MIC))),
+                PageBlock.Group("管理", listOf(
+                    PageBlock.Input("更新识别包", "", "update/$key", icon = PluginIcon.ADD),
+                    PageBlock.Input("导出", "", "export/$key", icon = PluginIcon.EXPORT),
+                    PageBlock.Input("删除", "", "delete/$key", icon = PluginIcon.CLOSE)))
             ))
         }
-        id == "settings" -> PluginPage(id, "流式识别设置", listOf(PageBlock.Text("推理线程：${store.threads}"),
-            PageBlock.Text("修改或切换识别包前，请先停止识别。编辑语言说明只影响列表筛选，识别语言取决于所用的识别包。"),
-            PageBlock.Actions(listOf(PageAction("threads", "推理线程", PluginIcon.SETTINGS), PageAction("packs", "识别包管理", PluginIcon.MIC)))))
+        id == "settings" -> PluginPage(id, "流式识别设置", listOf(
+            PageBlock.Group("推理", listOf(
+                PageBlock.Input("推理线程", store.threads.toString(), "threads", icon = PluginIcon.SETTINGS))),
+            PageBlock.Group("识别资源", listOf(
+                PageBlock.Input("识别包管理", "", "packs", icon = PluginIcon.MIC)))))
         else -> null
     }
 }
