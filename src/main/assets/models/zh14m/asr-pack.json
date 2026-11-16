@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "name": "中文（轻量）",
+  "languages": [
+    "zh"
+  ],
+  "architecture": "TRANSDUCER",
+  "files": {
+    "encoder": "encoder-epoch-99-avg-1.int8.onnx",
+    "decoder": "decoder-epoch-99-avg-1.int8.onnx",
+    "joiner": "joiner-epoch-99-avg-1.int8.onnx",
+    "tokens": "tokens.txt"
+  },
+  "modelType": "zipformer",
+  "sampleRate": 16000
+}

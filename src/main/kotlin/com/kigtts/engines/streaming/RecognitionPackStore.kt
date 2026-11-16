@@ -11,7 +11,7 @@ import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-internal class RecognitionPackStore(val storage: PluginStorage) {
+internal class RecognitionPackStore(val storage: PluginStorage, private val bundled: RecognitionPack? = null) {
     val session = Mutex()
     private val settingsFile = storage.file("config/recognition-packs.json").also { storage.configuration }
     private var settings = runCatching { JSONObject(settingsFile.readText()) }.getOrDefault(JSONObject())
@@ -19,28 +19,33 @@ internal class RecognitionPackStore(val storage: PluginStorage) {
     var filter: String
         get() = settings.optString("filter", "all")
         set(value) { settings.put("filter", value); save() }
-    fun list(): List<RecognitionPack> = storage.models.listFiles().orEmpty().filter { it.isDirectory && it.name.matches(Regex("[a-f0-9-]{36}")) }
+    private fun imports(): List<RecognitionPack> = storage.models.listFiles().orEmpty().filter { it.isDirectory && it.name.matches(Regex("[a-f0-9-]{36}")) }
         .mapNotNull { runCatching { RecognitionPack.read(it) }.getOrNull() }
         .sortedWith(compareByDescending<RecognitionPack> { it.pinned }.thenBy { it.order }.thenBy { it.id })
+    fun list(): List<RecognitionPack> = imports() + listOfNotNull(bundled)
+    fun isBundled(id: String): Boolean = bundled?.id == id
+    val hasBundledModel: Boolean get() = bundled != null
     fun selected(): RecognitionPack? = list().let { packs -> packs.firstOrNull { it.id == settings.optString("selected") } ?: packs.firstOrNull() }
     fun choose(id: String) = change { require(list().any { it.id == id }); settings.put("selected", id); save() }
     fun setThreads(value: Int) = change { require(value in 1..4); settings.put("threads", value); save() }
     fun edit(id: String, transform: (RecognitionPack) -> RecognitionPack) = change {
-        val pack = list().first { it.id == id }; val changed = transform(pack)
+        val pack = imported(id); val changed = transform(pack)
         val original = File(pack.directory, "asr-pack.json").readText()
         try { atomicText(File(pack.directory, "asr-pack.json"), changed.json().toString()); RecognitionPack.read(pack.directory) }
         catch (error: Exception) { atomicText(File(pack.directory, "asr-pack.json"), original); throw error }
     }
     fun reorder(proposed: List<String>) = change {
-        val all = list(); val visible = all.filter { filter == "all" || filter in it.languages }
-        ItemOrder.validate(proposed, visible.map { it.id })
-        val pins = proposed.map { id -> visible.first { it.id == id }.pinned }
+        val all = imports(); val visible = all.filter { filter == "all" || filter in it.languages }
+        val editableOrder = proposed.filterNot(::isBundled)
+        ItemOrder.validate(editableOrder, visible.map { it.id })
+        val pins = editableOrder.map { id -> visible.first { it.id == id }.pinned }
         require(pins.zipWithNext().none { !it.first && it.second })
-        val combined = all.map { it.id }.toMutableList(); val slots = combined.indices.filter { combined[it] in proposed }
-        slots.forEachIndexed { index, slot -> combined[slot] = proposed[index] }
+        val combined = all.map { it.id }.toMutableList(); val slots = combined.indices.filter { combined[it] in editableOrder }
+        slots.forEachIndexed { index, slot -> combined[slot] = editableOrder[index] }
         combined.forEachIndexed { index, id -> val pack = all.first { it.id == id }; atomicText(File(pack.directory, "asr-pack.json"), pack.copy(order = index.toLong()).json().toString()) }
     }
     fun import(source: File, replacing: String? = null): RecognitionPack {
+        require(replacing == null || !isBundled(replacing)) { "内置模型随插件更新" }
         val stage = File(storage.temporary, "asr-import-${UUID.randomUUID()}").apply { mkdirs() }
         val backup = File(storage.temporary, "asr-previous-${UUID.randomUUID()}")
         try {
@@ -50,10 +55,10 @@ internal class RecognitionPackStore(val storage: PluginStorage) {
             if (detected.directory != stage) File(detected.directory, "asr-pack.json").delete()
             atomicText(File(stage, "asr-pack.json"), normalized.json().toString()); RecognitionPack.read(stage)
             return change {
-                val old = replacing?.let { id -> list().first { it.id == id } }
+                val old = replacing?.let(::imported)
                 val id = old?.id ?: UUID.randomUUID().toString()
                 val candidate = normalized.copy(name = old?.name ?: normalized.name, remark = old?.remark ?: normalized.remark,
-                    pinned = old?.pinned ?: normalized.pinned, order = old?.order ?: (list().maxOfOrNull { it.order }?.plus(1) ?: 0))
+                    pinned = old?.pinned ?: normalized.pinned, order = old?.order ?: (imports().maxOfOrNull { it.order }?.plus(1) ?: 0))
                 atomicText(File(stage, "asr-pack.json"), candidate.json().toString()); RecognitionPack.read(stage)
                 val target = File(storage.models, id)
                 if (old != null) require(target.renameTo(backup)) { "无法备份旧识别包" }
@@ -64,14 +69,14 @@ internal class RecognitionPackStore(val storage: PluginStorage) {
         } finally { stage.deleteRecursively() }
     }
     fun delete(id: String) = change {
-        val target = list().first { it.id == id }.directory
+        val target = imported(id).directory
         val retired = File(storage.temporary, "asr-delete-${UUID.randomUUID()}")
         require(target.renameTo(retired))
         if (settings.optString("selected") == id) { settings.remove("selected"); save() }
         retired.deleteRecursively()
     }
     fun export(id: String): File = change {
-        val pack = list().first { it.id == id }
+        val pack = imported(id)
         val output = File(storage.temporary, "asr-export-${UUID.randomUUID()}.kigasr")
         try {
             ZipOutputStream(output.outputStream()).use { zip ->
@@ -80,6 +85,10 @@ internal class RecognitionPackStore(val storage: PluginStorage) {
                 }
             }; output
         } catch (error: Exception) { output.delete(); throw error }
+    }
+    private fun imported(id: String): RecognitionPack {
+        require(!isBundled(id)) { "内置模型随插件更新" }
+        return imports().first { it.id == id }
     }
     private fun save() = atomicText(settingsFile, settings.toString())
     private inline fun <T> change(block: () -> T): T {

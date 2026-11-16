@@ -21,6 +21,35 @@ class StreamingAsrPluginTest {
         assertEquals(spec.getString("id"), StreamingAsrPlugin().descriptor.id)
         assertEquals(spec.getString("version"), StreamingAsrPlugin().descriptor.version)
     }
+    @Test fun signedAssetsSupplyADefaultWithNoDownloadAndPreserveAnImportedSelection() = runBlocking<Unit> {
+        val storage = PluginStorage(root)
+        val assets = File("src/main/assets")
+        val bundled = requireNotNull(BundledRecognitionModel.readFrom(assets))
+        val plugin = StreamingAsrPlugin()
+        val context = PluginContext("", "")
+        val environment = object : PluginEnvironment {
+            override val storage = storage
+            override val assets = assets
+            override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("Unexpected network request")
+        }
+        plugin.attach(environment)
+        assertEquals(EngineAvailability.READY, plugin.asr.info.availability)
+        assertEquals(bundled.id, plugin.page("packs", context)!!.management!!.items.single { it.selected }.id)
+        assertTrue(storage.models.listFiles().orEmpty().isEmpty())
+        assertFalse(plugin.page("catalog", context)!!.management!!.items.any { it.id == "zh14m" })
+        assertEquals(PluginOutcome.OpenPage("packs"), plugin.execute("catalog-download/zh14m", context))
+
+        val store = RecognitionPackStore(storage, bundled)
+        val userModel = store.import(fixture(root, "en", "My model"))
+        store.choose(userModel.id)
+        store.reorder(listOf(bundled.id, userModel.id))
+        assertEquals(listOf(userModel.id, bundled.id), store.list().map { it.id })
+        assertThrows(IllegalArgumentException::class.java) { store.delete(bundled.id) }
+        plugin.close()
+        plugin.attach(environment)
+        assertEquals(userModel.id, plugin.page("packs", context)!!.management!!.items.single { it.selected }.id)
+        plugin.close()
+    }
     @Test fun declaredLibraryRoutesImportSelectionFilterReorderAndDeleteConfirmation() = runBlocking<Unit> {
         val storage = PluginStorage(root)
         val plugin = StreamingAsrPlugin()

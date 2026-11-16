@@ -8,14 +8,15 @@ import org.json.JSONObject
 
 class StreamingAsrPlugin : KigPlugin {
     override val descriptor = PluginDescriptor("engine.streaming-asr", "流式语音识别",
-        "边说边显示字幕，支持多种语言的识别包", version = "0.8.5")
+        "内置中文模型，装好插件即可离线流式识别", version = "0.8.6")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: RecognitionPackStore
     private lateinit var pages: RecognitionPackPages
     private lateinit var engine: IncrementalAsrEngine
     override val asr: AsrEngine get() = engine
     override suspend fun attach(environment: PluginEnvironment) {
-        this.environment = environment; store = RecognitionPackStore(environment.storage)
+        this.environment = environment
+        store = RecognitionPackStore(environment.storage, BundledRecognitionModel.readFrom(environment.assets))
         pages = RecognitionPackPages(store); engine = IncrementalAsrEngine(store)
     }
     override val contributions = PluginContributions(drawerEntries = listOf(
@@ -60,6 +61,10 @@ class StreamingAsrPlugin : KigPlugin {
             "threads-save" -> { store.setThreads(value().toInt()); PluginOutcome.RefreshUi }
             "download" -> PluginOutcome.OpenPage("catalog")
             "catalog-download" -> {
+                if (id == "zh14m" && store.hasBundledModel) {
+                    store.choose(BundledRecognitionModel.ID)
+                    return@withContext PluginOutcome.OpenPage("packs")
+                }
                 val model = RecognitionModelCatalog.models.first { it.id == id }
                 val source = environment.download(model.url, "downloads/${model.archive}.tar.bz2", model.sha256)
                 store.import(source); PluginOutcome.OpenPage("packs")
