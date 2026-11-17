@@ -15,12 +15,13 @@ internal object RecognitionModelCatalog {
             "9c559283e8498d3fe95913c79ca1cb454bb26281ac2b102b41306c7d752765d9", 127887156),
         CatalogModel("zh-en", "中文与英文（双语）", listOf("zh", "en"), "sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16",
             "2b7c63322b32e5e0f2526043a1103366119ca58dd615cd7105a37c01db9553d7", 458187351))
-    fun page(hasBundledModel: Boolean) = PluginPage("catalog", "获取识别包", listOf(
-        PageBlock.Text("选择需要的语言包。下载需要网络和对应存储空间；支持的语言由包本身决定。"),
-        PageBlock.Group("其它来源", listOf(
-            PageBlock.Input("自定义下载地址", "", "download-custom", icon = PluginIcon.ADD)))
+    fun page(hasBundledModel: Boolean, copy: (String, String) -> String = { _, fallback -> fallback }) = PluginPage("catalog", copy("packs.get", "获取识别包"), listOf(
+        PageBlock.Text(copy("catalog.select", "选择需要的语言包。下载需要网络和对应存储空间；支持的语言由包本身决定。")),
+        PageBlock.Group(copy("catalog.sources", "其它来源"), listOf(
+            PageBlock.Input(copy("catalog.custom", "自定义下载地址"), "", "download-custom", icon = PluginIcon.ADD)))
     ), management = ManagementList("recognition-catalog", models.filterNot { hasBundledModel && it.id == "zh14m" }.map { model ->
-        ManagementItem(model.id, model.title, "${model.languages.joinToString(" / ")} · 下载约 ${model.bytes / 1024 / 1024} MiB", PluginIcon.MIC,
-            primaryAction = "catalog-download/${model.id}", actions = listOf(PageAction("catalog-download/${model.id}", "下载并安装", PluginIcon.ADD)))
+        ManagementItem(model.id, copy("catalog.${model.id}", model.title),
+            model.languages.joinToString(" / ") + " · " + copy("catalog.size_label", "下载约") + " ${model.bytes / 1024 / 1024} MiB", PluginIcon.MIC,
+            primaryAction = "catalog-download/${model.id}", actions = listOf(PageAction("catalog-download/${model.id}", copy("catalog.install", "下载并安装"), PluginIcon.ADD)))
     }))
 }
