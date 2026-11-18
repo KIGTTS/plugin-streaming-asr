@@ -55,5 +55,19 @@
   "action.https": "HTTPS のアドレスを入力してください",
   "action.sha_prompt": "信頼できる配布元の SHA-256（64 文字）",
   "action.sha_invalid": "64 文字の SHA-256 ハッシュを入力してください",
-  "action.unknown": "不明な認識パック操作"
+  "action.unknown": "不明な認識パック操作",
+  "packs.bundled_name": "中国語（軽量・内蔵）",
+  "architecture.transducer": "オンライン Transducer",
+  "architecture.paraformer": "オンライン Paraformer",
+  "architecture.zipformer": "オンライン Zipformer CTC",
+  "architecture.nemo": "オンライン NeMo CTC",
+  "action.import_failed": "認識パックをインポートできません。モデル、語彙ファイル、アーカイブ形式を確認してください。",
+  "action.download_failed": "認識パックをダウンロードまたはインストールできません。接続とダウンロード情報を確認してください。",
+  "action.invalid_threads": "1〜4 の整数を入力してください",
+  "action.failed": "認識パックの操作を完了できません",
+  "engine.duration": "録音は最大 {seconds} 秒までです",
+  "engine.no_pack": "先にストリーミング認識パックを選択してください",
+  "engine.initialization": "ストリーミング認識モデルを読み込めません",
+  "engine.library": "ストリーミング認識ランタイムを読み込めません",
+  "engine.format": "{rate} Hz のモノラル PCM16 音声が必要です"
 }

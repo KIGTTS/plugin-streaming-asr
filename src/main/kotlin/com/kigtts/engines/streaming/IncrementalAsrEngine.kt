@@ -7,7 +7,9 @@ import kotlinx.coroutines.sync.withLock
 
 /** Decode every available online chunk. Partial text always comes from the decoder's current hypothesis. */
 internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
-    private val create: (RecognitionPack, Int, Boolean) -> OnlineSession = ::SherpaOnlineSession) : ControlledAsrEngine {
+    private val copy: (String, Map<String, String>, String) -> String = { _, _, fallback -> fallback },
+    private val create: (RecognitionPack, Int, Boolean) -> OnlineSession = ::SherpaOnlineSession,
+) : ControlledAsrEngine {
     private var managed = false
     private var cached: OnlineSession? = null
     private var resourceKey: String? = null
@@ -70,7 +72,10 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
     override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult = withContext(Dispatchers.IO) {
         packs.session.withLock {
             val pack = selected(); validate(audio, pack)
-            require(audio.bytes.size <= pack.sampleRate * 2 * info.maxBatchSeconds) { "完整录音最多 ${info.maxBatchSeconds} 秒" }
+            val maxSeconds = info.maxBatchSeconds
+            require(audio.bytes.size <= pack.sampleRate * 2 * maxSeconds) {
+                copy("engine.duration", mapOf("seconds" to maxSeconds.toString()), "录音最多 $maxSeconds 秒")
+            }
             if (audio.bytes.isEmpty()) return@withLock RecognitionResult("")
             val decoder = initialize(pack, false)
             try {
@@ -86,7 +91,7 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
             } finally { finish(decoder) }
         }
     }
-    private fun selected() = packs.selected() ?: throw EngineException(EngineError.NOT_CONFIGURED, "请先导入并选用一个流式识别包")
+    private fun selected() = packs.selected() ?: throw EngineException(EngineError.NOT_CONFIGURED, copy("engine.no_pack", emptyMap(), "请先选用一个流式识别包"))
     private fun initialize(pack: RecognitionPack, endpoints: Boolean): OnlineSession = try {
         if (!managed) create(pack, packs.threads, endpoints) else {
             val key = "${pack.directory.path}:${pack.directory.lastModified()}:${pack.files.entries.sortedBy { it.key }.map { pack.file(it.key).lastModified() }}:${packs.threads}:$endpoints"
@@ -95,10 +100,14 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
         }
     }
         catch (error: CancellationException) { throw error }
-        catch (error: Exception) { throw EngineException(EngineError.INITIALIZATION, "识别包无法用于在线解码：${error.message}", error) }
-        catch (error: LinkageError) { throw EngineException(EngineError.INITIALIZATION, "流式识别运行库加载失败", error) }
+        catch (error: Exception) { throw EngineException(EngineError.INITIALIZATION, copy("engine.initialization", emptyMap(), "无法加载流式识别模型"), error) }
+        catch (error: LinkageError) { throw EngineException(EngineError.INITIALIZATION, copy("engine.library", emptyMap(), "无法加载流式识别运行库"), error) }
     private fun validate(audio: PcmAudio, pack: RecognitionPack) {
-        if (audio.sampleRate != pack.sampleRate || audio.channels != 1) throw EngineException(EngineError.UNSUPPORTED_FORMAT, "需要 ${pack.sampleRate} Hz 单声道 PCM16")
+        if (audio.sampleRate != pack.sampleRate || audio.channels != 1) {
+            val rate = pack.sampleRate
+            throw EngineException(EngineError.UNSUPPORTED_FORMAT,
+                copy("engine.format", mapOf("rate" to rate.toString()), "需要 $rate Hz 单声道 PCM16"))
+        }
     }
     private fun samples(audio: PcmAudio, offset: Int, count: Int) = FloatArray(count) { index ->
         val position = (offset + index) * 2

@@ -55,5 +55,19 @@
   "action.https": "Enter an HTTPS address",
   "action.sha_prompt": "SHA-256 from a trusted model publisher (64 characters)",
   "action.sha_invalid": "Enter a 64-character SHA-256 hash",
-  "action.unknown": "Unknown recognition pack action"
+  "action.unknown": "Unknown recognition pack action",
+  "packs.bundled_name": "Chinese (lightweight, built-in)",
+  "architecture.transducer": "Online Transducer",
+  "architecture.paraformer": "Online Paraformer",
+  "architecture.zipformer": "Online Zipformer CTC",
+  "architecture.nemo": "Online NeMo CTC",
+  "action.import_failed": "Could not import the recognition pack. Check its model, vocabulary and archive format.",
+  "action.download_failed": "Could not download or install the recognition pack. Check the connection and download details.",
+  "action.invalid_threads": "Enter a whole number from 1 to 4",
+  "action.failed": "Could not complete the recognition pack action",
+  "engine.duration": "Recordings can be up to {seconds} seconds long",
+  "engine.no_pack": "Select a streaming recognition pack first",
+  "engine.initialization": "Could not load the streaming recognition model",
+  "engine.library": "Could not load the streaming recognition runtime",
+  "engine.format": "Requires {rate} Hz mono PCM16 audio"
 }

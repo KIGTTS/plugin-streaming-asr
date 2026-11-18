@@ -55,5 +55,19 @@
   "action.https": "请输入 HTTPS 地址",
   "action.sha_prompt": "SHA-256（来自可信模型发布者，64 位）",
   "action.sha_invalid": "需要 64 位 SHA-256",
-  "action.unknown": "未知识别包操作"
+  "action.unknown": "未知识别包操作",
+  "packs.bundled_name": "中文（轻量，内置）",
+  "architecture.transducer": "在线 Transducer",
+  "architecture.paraformer": "在线 Paraformer",
+  "architecture.zipformer": "在线 Zipformer CTC",
+  "architecture.nemo": "在线 NeMo CTC",
+  "action.import_failed": "无法导入识别包，请检查模型文件、词表和包格式",
+  "action.download_failed": "无法下载或安装识别包，请检查连接和下载信息",
+  "action.invalid_threads": "请输入 1 到 4 之间的整数",
+  "action.failed": "无法完成识别包操作",
+  "engine.duration": "录音最多 {seconds} 秒",
+  "engine.no_pack": "请先选用一个流式识别包",
+  "engine.initialization": "无法加载流式识别模型",
+  "engine.library": "无法加载流式识别运行库",
+  "engine.format": "需要 {rate} Hz 单声道 PCM16"
 }

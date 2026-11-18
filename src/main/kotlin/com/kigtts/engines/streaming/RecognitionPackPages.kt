@@ -9,7 +9,7 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
             val all = store.list(); val selected = store.selected()
             val visible = all.filter { store.filter == "all" || store.filter in it.languages }
             PluginPage(id, copy("packs.title", "流式识别包"), listOf(
-                PageBlock.Notice(if (selected == null) copy("packs.empty", "请添加识别包") else copy("packs.current_label", "当前") + ": " + selected.name),
+                PageBlock.Notice(if (selected == null) copy("packs.empty", "请添加识别包") else copy("packs.current_label", "当前") + ": " + selected.displayName(copy)),
                 PageBlock.Group(copy("packs.group", "识别包"), listOf(
                     PageBlock.Input(copy("packs.import", "导入识别包"), copy("packs.from_file", "从文件添加"), "import", icon = PluginIcon.ADD, symbol = "file_open"),
                     PageBlock.Input(copy("packs.get", "获取识别包"), copy("packs.choose_language", "选择需要的语言"), "download", icon = PluginIcon.ADD))),
@@ -21,8 +21,8 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
                 val secondary = if (bundled) emptyList() else listOf(
                     PageAction("pin/${pack.id}", if (pack.pinned) copy("packs.unpin", "取消置顶") else copy("packs.pin", "置顶"), PluginIcon.PIN),
                     PageAction("export/${pack.id}", copy("packs.export", "导出"), PluginIcon.EXPORT), PageAction("delete/${pack.id}", copy("packs.delete", "删除"), PluginIcon.CLOSE))
-                val info = if (bundled) copy("packs.bundled", "内置模型 · 离线可用") else pack.languages.joinToString(" / ") + " · " + pack.architecture.label()
-                ManagementItem(pack.id, pack.name, info +
+                val info = if (bundled) copy("packs.bundled", "内置模型 · 离线可用") else pack.languages.joinToString(" / ") + " · " + pack.architecture.label(copy)
+                ManagementItem(pack.id, pack.displayName(copy), info +
                     if (pack.remark.isBlank()) "" else "\n${pack.remark}", PluginIcon.MIC,
                     selected = pack.id == selected?.id, pinned = pack.pinned,
                     group = if (bundled) "bundled" else if (pack.pinned) "pinned" else "normal",
@@ -33,12 +33,12 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
         }
         id.startsWith("pack/") -> store.list().firstOrNull { it.id == id.substringAfter('/') }?.let { pack ->
             val key = pack.id
-            PluginPage(id, pack.name, buildList {
+            PluginPage(id, pack.displayName(copy), buildList {
                 add(PageBlock.Text(pack.name, heading = true))
                 add(
                 PageBlock.Notice(if (store.selected()?.id == key) copy("packs.active", "正在使用") else copy("packs.inactive", "未选用")),
                 )
-                add(PageBlock.Text(copy("packs.language_label", "语言") + ": ${pack.languages.joinToString(" / ")}\n${pack.architecture.label()} · ${pack.sampleRate} Hz\n${pack.remark}"))
+                add(PageBlock.Text(copy("packs.language_label", "语言") + ": ${pack.languages.joinToString(" / ")}\n${pack.architecture.label(copy)} · ${pack.sampleRate} Hz\n${pack.remark}"))
                 val choose = PageBlock.Input(copy("packs.select", "选用识别包"), "", "use/$key", icon = PluginIcon.MIC)
                 if (store.isBundled(key)) {
                     add(PageBlock.Notice(copy("packs.bundled_notice", "内置模型可离线使用，随插件更新")))
@@ -64,9 +64,12 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
     }
 }
 
-internal fun OnlineArchitecture.label() = when (this) {
-    OnlineArchitecture.TRANSDUCER -> "在线 Transducer"
-    OnlineArchitecture.PARAFORMER -> "在线 Paraformer"
-    OnlineArchitecture.ZIPFORMER_CTC -> "在线 Zipformer CTC"
-    OnlineArchitecture.NEMO_CTC -> "在线 NeMo CTC"
+internal fun OnlineArchitecture.label(copy: (String, String) -> String) = when (this) {
+    OnlineArchitecture.TRANSDUCER -> copy("architecture.transducer", "在线 Transducer")
+    OnlineArchitecture.PARAFORMER -> copy("architecture.paraformer", "在线 Paraformer")
+    OnlineArchitecture.ZIPFORMER_CTC -> copy("architecture.zipformer", "在线 Zipformer CTC")
+    OnlineArchitecture.NEMO_CTC -> copy("architecture.nemo", "在线 NeMo CTC")
 }
+
+private fun RecognitionPack.displayName(copy: (String, String) -> String): String =
+    if (id == BundledRecognitionModel.ID) copy("packs.bundled_name", "中文（轻量，内置）") else name
