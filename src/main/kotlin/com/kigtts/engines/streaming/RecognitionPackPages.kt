@@ -33,8 +33,9 @@ internal class RecognitionPackPages(private val store: RecognitionPackStore) {
         }
         id.startsWith("pack/") -> store.list().firstOrNull { it.id == id.substringAfter('/') }?.let { pack ->
             val key = pack.id
-            PluginPage(id, pack.displayName(copy), buildList {
-                add(PageBlock.Text(pack.name, heading = true))
+            val displayName = pack.displayName(copy)
+            PluginPage(id, displayName, buildList {
+                add(PageBlock.Text(displayName, heading = true))
                 add(
                 PageBlock.Notice(if (store.selected()?.id == key) copy("packs.active", "正在使用") else copy("packs.inactive", "未选用")),
                 )
